@@ -1,4 +1,6 @@
+use std::rc::Rc;
 use crate::image_utils::ray::Ray;
+use crate::materials::materials::Material;
 use crate::utils::vec3::Vec3;
 
 pub trait Hittable
@@ -10,14 +12,15 @@ pub struct HitRecord
 {
     pub position: Vec3,
     pub normal: Vec3,
+    pub material: Rc<dyn Material>,
     pub t: f32,
     pub front_face: bool,
 }
 
 impl HitRecord
 {
-    pub fn new(position: Vec3, t: f32) -> HitRecord {
-        HitRecord { position, normal: Vec3::new(0.0, 0.0, 0.0), t, front_face: false }
+    pub fn new(position: Vec3, material: Rc<dyn Material>, t: f32) -> HitRecord {
+        HitRecord { position, normal: Vec3::new(0.0, 0.0, 0.0), material, t, front_face: false }
     }
 
     pub fn set_face_normal(&mut self, ray: &Ray, outward_normal: Vec3) {

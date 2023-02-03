@@ -1,17 +1,20 @@
+use std::rc::Rc;
 use crate::image_utils::hittable::{HitRecord, Hittable};
 use crate::image_utils::ray::Ray;
+use crate::materials::materials::Material;
 use crate::utils::vec3::Vec3;
 
 pub struct Sphere
 {
     pub center: Vec3,
     pub radius: f32,
+    pub material: Rc<dyn Material>,
 }
 
 impl Sphere
 {
-    pub fn new(center: Vec3, radius: f32) -> Sphere {
-        Sphere { center, radius }
+    pub fn new(center: Vec3, radius: f32, material: Rc<dyn Material>) -> Sphere {
+        Sphere { center, radius, material }
     }
 }
 
@@ -34,17 +37,8 @@ impl Hittable for Sphere
             if root < t_min || t_max < root {
                 return None;
             }
-            //     else {
-            //         let position = ray.at(root);
-            //         let normal = (position - self.center) / self.radius;
-            //         Some(HitRecord { position, normal, t: root })
-            //     }
-            // } else {
-            //     let position = ray.at(root);
-            //     let normal = (position - self.center) / self.radius;
-            //     Some(HitRecord { position, normal, t: root })
         }
-        let mut record = HitRecord::new(ray.at(root), root);
+        let mut record = HitRecord::new(ray.at(root), self.material.clone(), root);
         let outward_normal = (record.position - self.center) / self.radius;
         record.set_face_normal(ray, outward_normal);
         Some(record)
