@@ -1,6 +1,9 @@
 use crate::image_utils::image::Image;
 use crate::image_utils::viewport::Viewport;
-use crate::utils::ray::Ray;
+use crate::image_utils::camera::Camera;
+use crate::image_utils::hittable::HittableList;
+use crate::image_utils::sphere::Sphere;
+use crate::utils::random_double;
 use crate::utils::vec3::Vec3;
 
 mod image_utils;
@@ -20,26 +23,36 @@ fn main() {
     //     }
     // }
     let aspect_ratio = 16.0 / 9.0;
-    let width = 400.0 / aspect_ratio;
-    let mut image = Image::new(400, width as u32, 255);
-    let viewport = Viewport::new((aspect_ratio * 2.0) as u32, 2, 1.0, Vec3::new(0.0, 0.0, 0.0), Vec3::new(aspect_ratio * 2.0, 0.0, 0.0), Vec3::new(0.0, 2.0, 0.0), Vec3::new(-aspect_ratio, -1.0, -1.0));
+    let height = 400.0 / aspect_ratio;
+    let samples_per_pixel = 100;
+    let mut image = Image::new(400, height as u32, 255);
+    let mut list = HittableList::new();
+    let sphere = Sphere::new(Vec3::new(0.0, 0.0, -1.0), 0.5);
+    let sphere2 = Sphere::new(Vec3::new(0.0, -100.5, -1.0), 100.0);
+    list.add(Box::new(sphere));
+    list.add(Box::new(sphere2));
+    let camera = Camera::new();
     for (mut index, mut pixel) in image.data.iter_mut().enumerate() {
         let x = index as u32 % image.width;
         let y = index as u32 / image.width;
 
-        let u = x as f32 / (image.width - 1) as f32;
-        let v = y as f32 / (image.height - 1) as f32;
-        let ray = Ray::new(Vec3 { x: 0.0, y: 0.0, z: 0.0 }, viewport.lower_left_corner + u * viewport.horizontal + v * viewport.vertical);
-        let color = ray.color();
-        pixel.r = (color.x * 255.999) as u8;
-        pixel.g = (color.y * 255.999) as u8;
-        pixel.b = (color.z * 255.999) as u8;
+        let scale = 1.0 / samples_per_pixel as f32;
 
+        let mut pixel_color = Vec3::new(0.0, 0.0, 0.0);
+        for _ in 0..samples_per_pixel {
+            let u = (x as f32+ random_double()) / (image.width - 1) as f32;
+            let v = (y as f32 + random_double()) / (image.height - 1) as f32;
+            let ray = camera.get_ray(u, v);
+            pixel_color = pixel_color + ray.color(&list);
+        }
+        pixel.r = ((pixel_color.x * scale).clamp(0.0, 0.999) * 256.0) as u8;
+        pixel.g = ((pixel_color.y * scale).clamp(0.0, 0.999) * 256.0) as u8;
+        pixel.b = ((pixel_color.z * scale).clamp(0.0, 0.999) * 256.0) as u8;
 
         index += 1;
         if index as u32 / image.width != y {
             println!("Remaining lines: {}", image.height - y);
         }
     }
-    image.write_to_file("test.ppm");
+    image.write_to_file("test2.ppm");
 }

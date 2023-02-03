@@ -1,5 +1,5 @@
 use std::fmt::{Display, Formatter};
-use std::ops::{Add, Div, Mul, Sub};
+use std::ops::{Add, Div, Mul, Neg, Sub};
 
 #[derive(Debug, Copy, Clone)]
 pub struct Vec3 {
@@ -13,8 +13,12 @@ impl Vec3 {
         Vec3 { x, y, z }
     }
 
+    pub fn length_squared(&self) -> f32 {
+        self.x * self.x + self.y * self.y + self.z * self.z
+    }
+
     pub fn length(&self) -> f32 {
-        (self.x * self.x + self.y * self.y + self.z * self.z).sqrt()
+        self.length_squared().sqrt()
     }
 
     pub fn dot(&self, other: Vec3) -> f32 {
@@ -87,6 +91,14 @@ impl Div<f32> for Vec3 {
 
     fn div(self, rhs: f32) -> Self::Output {
         Vec3::new(self.x / rhs, self.y / rhs, self.z / rhs)
+    }
+}
+
+impl Neg for Vec3 {
+    type Output = Vec3;
+
+    fn neg(self) -> Self::Output {
+        Vec3::new(-self.x, -self.y, -self.z)
     }
 }
 
