@@ -86,7 +86,7 @@ fn basic_scene() -> HittableList
 
 fn run(id: usize, width: u32, height: u32, camera: &Camera, list: &HittableList) -> Vec<Pixel>
 {
-    let samples_per_pixel = 500;
+    let samples_per_pixel = 100;
     let max_depth = 50;
     let scale = 1.0 / samples_per_pixel as f32;
     let mut index = id * width as usize;
@@ -106,12 +106,9 @@ fn run(id: usize, width: u32, height: u32, camera: &Camera, list: &HittableList)
             let ray = camera.get_ray(u, v);
             pixel_color = pixel_color + ray.color(list, max_depth);
         }
-        let r = (pixel_color.x * scale).sqrt().clamp(0.0, 0.999);
-        pixel.r = (r * 256.0) as u8;
-        let g = (pixel_color.y * scale).sqrt().clamp(0.0, 0.999);
-        pixel.g = (g * 256.0) as u8;
-        let b = (pixel_color.z * scale).sqrt().clamp(0.0, 0.999);
-        pixel.b = (b * 256.0) as u8;
+        pixel.r = ((pixel_color.x * scale).sqrt().clamp(0.0, 0.999) * 256.0) as u8;
+        pixel.g = ((pixel_color.y * scale).sqrt().clamp(0.0, 0.999) * 256.0) as u8;
+        pixel.b = ((pixel_color.z * scale).sqrt().clamp(0.0, 0.999) * 256.0) as u8;
         index += 1;
         if index % width as usize == 0 {
             index += width as usize * (NUMBER_OF_THREADS - 1);
@@ -124,10 +121,10 @@ fn run(id: usize, width: u32, height: u32, camera: &Camera, list: &HittableList)
 
 fn main() {
     let aspect_ratio = 3.0 / 2.0;
-    let width: f32 = 1200.0;
+    let width: f32 = 400.0;
 
     let mut image = Image::new(width as u32, (width / aspect_ratio) as u32, 255);
-    let list = random_scene();
+    let list = Arc::new(random_scene());
 
     let lookfrom = Vec3::new(13.0, 2.0, 3.0);
     let lookat = Vec3::new(0.0, 0.0, 0.0);
@@ -135,27 +132,24 @@ fn main() {
     let distance_to_focus = 10.0;
     let aperture = 0.1;
 
-    let camera = Camera::new(lookfrom, lookat, view_up, 20.0, aspect_ratio, aperture, distance_to_focus);
+    let camera = Arc::new(Camera::new(lookfrom, lookat, view_up, 20.0, aspect_ratio, aperture, distance_to_focus));
 
+    let pixels_out: Arc<Mutex<Vec<Vec<Pixel>>>> = Arc::new(Mutex::new(vec![vec![]; NUMBER_OF_THREADS]));
     let mut threads = vec![];
-    let pixels_out: Arc<Mutex<Vec<Vec<Pixel>>>> = Arc::new(Mutex::new(Vec::with_capacity(NUMBER_OF_THREADS)));
-    pixels_out.lock().unwrap().resize(NUMBER_OF_THREADS, Vec::new());
     for i in 0..NUMBER_OF_THREADS {
         let image = image.clone();
-        let list = list.clone();
         let camera = camera.clone();
         let pixels_out = pixels_out.clone();
+        let list = list.clone();
         threads.push(thread::spawn(move || {
             let out = run(i, image.width, image.height, &camera, &list);
             pixels_out.lock().unwrap()[i] = out;
             println!("Thread {i} finished.");
         }));
     }
-
     for thread in threads {
         thread.join().unwrap();
     }
-    image.data.clear();
 
     let pixels_out = pixels_out.lock().unwrap();
     let iterations = pixels_out[0].len() as u32 / image.width + 1;
