@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::sync::Arc;
 use crate::image_utils::hittable::{HitRecord, Hittable};
 use crate::image_utils::ray::Ray;
 use crate::materials::materials::Material;
@@ -8,12 +8,12 @@ pub struct Sphere
 {
     pub center: Vec3,
     pub radius: f32,
-    pub material: Rc<dyn Material>,
+    pub material: Arc<dyn Material + Send + Sync>,
 }
 
 impl Sphere
 {
-    pub fn new(center: Vec3, radius: f32, material: Rc<dyn Material>) -> Sphere {
+    pub fn new(center: Vec3, radius: f32, material: Arc<dyn Material + Send + Sync>) -> Sphere {
         Sphere { center, radius, material }
     }
 }
@@ -42,5 +42,9 @@ impl Hittable for Sphere
         let outward_normal = (record.position - self.center) / self.radius;
         record.set_face_normal(ray, outward_normal);
         Some(record)
+    }
+
+    fn clone_dyn(&self) -> Arc<dyn Hittable + Send + Sync> {
+        Arc::new(Sphere::new(self.center, self.radius, self.material.clone()))
     }
 }

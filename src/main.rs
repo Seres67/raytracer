@@ -1,67 +1,82 @@
-use std::rc::Rc;
-use crate::image_utils::image::Image;
+use std::sync::{Arc, Mutex};
+use std::thread;
+use crate::image_utils::image::{Image, Pixel};
 use crate::image_utils::camera::Camera;
 use crate::image_utils::hittable::HittableList;
 use crate::image_utils::sphere::Sphere;
-use crate::materials::materials::{Dielectric, Lambertian, Metal};
-use crate::utils::random_double;
+use crate::materials::materials::{Dielectric, Lambertian, Material, Metal};
+use crate::utils::{random_double, random_double_range};
 use crate::utils::vec3::Vec3;
 
 mod image_utils;
 mod utils;
 mod materials;
 
-fn main() {
-    // let mut image = Image::new(256, 256, 255);
-    // for (mut index, mut pixel) in image.data.iter_mut().enumerate() {
-    //     let x = index as u32 % image.width;
-    //     let y = index as u32 / image.width;
-    //     pixel.r = (x as f32 / (256 - 1) as f32 * 255.999) as u8;
-    //     pixel.g = ((y as f32 / (256 - 1) as f32) * 255.999) as u8;
-    //     pixel.b = (0.25 * 255.999) as u8;
-    //     index += 1;
-    //     if index as u32 / image.width != y {
-    //         println!("Remaining lines: {}", image.height - y);
-    //     }
-    // }
-    let aspect_ratio = 16.0 / 9.0;
-    let height = 400.0 / aspect_ratio;
+const NUMBER_OF_THREADS: usize = 7;
+
+fn random_scene() -> HittableList
+{
+    let mut list = HittableList::new();
+    let material_ground = Arc::new(Lambertian::new(Vec3::new(0.5, 0.5, 0.5)));
+    let sphere = Sphere::new(Vec3::new(0.0, -1000.0, 0.0), 1000.0, material_ground);
+    list.add(Arc::new(sphere));
+
+    for a in -11..11 {
+        for b in -11..11 {
+            let choose_mat = random_double();
+            let center = Vec3::new(a as f32 + 0.9 * random_double(), 0.2, b as f32 + 0.9 * random_double());
+
+            if (center - Vec3::new(4.0, 0.2, 0.0)).length() > 0.9 {
+                let material: Arc<dyn Material + Send + Sync>;
+                if choose_mat < 0.8 {
+                    let albedo = Vec3::random() * Vec3::random();
+                    material = Arc::new(Lambertian::new(albedo));
+                    let sphere = Sphere::new(center, 0.2, material);
+                    list.add(Arc::new(sphere));
+                } else if choose_mat < 0.95 {
+                    let albedo = Vec3::random_range(0.5, 1.0);
+                    let fuzz = random_double_range(0.0, 0.5);
+                    material = Arc::new(Metal::new(albedo, fuzz));
+                    let sphere = Sphere::new(center, 0.2, material);
+                    list.add(Arc::new(sphere));
+                } else {
+                    material = Arc::new(Dielectric::new(1.5));
+                    let sphere = Sphere::new(center, 0.2, material);
+                    list.add(Arc::new(sphere));
+                }
+            }
+        }
+    }
+
+    let material1 = Arc::new(Dielectric::new(1.5));
+    let sphere = Sphere::new(Vec3::new(0.0, 1.0, 0.0), 1.0, material1);
+    list.add(Arc::new(sphere));
+
+    let material2 = Arc::new(Lambertian::new(Vec3::new(0.4, 0.2, 0.1)));
+    let sphere = Sphere::new(Vec3::new(-4.0, 1.0, 0.0), 1.0, material2);
+    list.add(Arc::new(sphere));
+    list
+}
+
+fn run(mut data: Vec<Pixel>, id: usize, width: u32, height: u32, camera: &Camera, list: &HittableList) -> Vec<Pixel>
+{
     let samples_per_pixel = 100;
     let max_depth = 50;
     let scale = 1.0 / samples_per_pixel as f32;
+    let mut index = width as usize * height as usize / NUMBER_OF_THREADS * id;
+    let total_lines = (height as f32 / NUMBER_OF_THREADS as f32).round();
+    let mut current_line = 0.0;
 
-    let mut image = Image::new(400, height as u32, 255);
-    let mut list = HittableList::new();
-
-    let material_ground = Rc::new(Lambertian::new(Vec3::new(0.8, 0.8, 0.0)));
-    let material_center = Rc::new(Dielectric::new(1.5));
-    let material_right = Rc::new(Metal::new(Vec3::new(0.8, 0.6, 0.2), 1.0));
-    let material_left = Rc::new(Dielectric::new(1.5));
-
-    let sphere_ground = Sphere::new(Vec3::new(0.0, 100.5, -1.0), 100.0, material_ground);
-    let sphere_center = Sphere::new(Vec3::new(0.0, 0.0, -1.0), 0.5, material_center);
-    let sphere_right = Sphere::new(Vec3::new(-1.0, 0.0, -1.0), 0.5, material_left);
-    let sphere_left = Sphere::new(Vec3::new(1.0, 0.0, -1.0), 0.5, material_right);
-
-    list.add(Box::new(sphere_ground));
-    list.add(Box::new(sphere_center));
-    list.add(Box::new(sphere_left));
-    list.add(Box::new(sphere_right));
-
-    let camera = Camera::new();
-
-    for (mut index, mut pixel) in image.data.iter_mut().enumerate() {
-        let x = index as u32 % image.width;
-        let y = index as u32 / image.width;
-
+    for mut pixel in data.iter_mut() {
+        let x = index as u32 % width;
+        let y = index as u32 / width;
 
         let mut pixel_color = Vec3::new(0.0, 0.0, 0.0);
         for _ in 0..samples_per_pixel {
-            let u = (x as f32 + random_double()) / (image.width - 1) as f32;
-            let v = (y as f32 + random_double()) / (image.height - 1) as f32;
+            let u = (x as f32 + random_double()) / (width - 1) as f32;
+            let v = (y as f32 + random_double()) / (height - 1) as f32;
             let ray = camera.get_ray(u, v);
-            let color = ray.color(&list, max_depth);
-            pixel_color = pixel_color + color;
+            pixel_color = pixel_color + ray.color(list, max_depth);
         }
         let mut r = pixel_color.x * scale;
         r = r.sqrt();
@@ -77,9 +92,71 @@ fn main() {
         pixel.b = (b * 256.0) as u8;
 
         index += 1;
-        if index as u32 / image.width != y {
-            println!("Remaining lines: {}", image.height - y);
+        if index as u32 / width != y {
+            current_line += 1.0;
+            let remaining_lines = total_lines - current_line;
+            println!("Thread {} is currently processing line {} of {}. {} lines remaining.", id, current_line, total_lines, remaining_lines);
         }
     }
-    image.write_to_file("test2.ppm");
+    data
+}
+
+fn main() {
+    let aspect_ratio = 16.0 / 9.0;
+    let width: f32 = 400.0;
+
+    let mut image = Image::new(width as u32, (width / aspect_ratio) as u32, 255);
+    // let list = random_scene();
+    let mut list = HittableList::new();
+
+    let material_ground = Arc::new(Lambertian::new(Vec3::new(0.5, 0.5, 0.5)));
+    let material_center = Arc::new(Lambertian::new(Vec3::new(0.7, 0.3, 0.3)));
+    let material_left = Arc::new(Dielectric::new(1.5));
+    let material_right = Arc::new(Metal::new(Vec3::new(0.8, 0.6, 0.2), 0.0));
+
+    let sphere_ground = Sphere::new(Vec3::new(0.0, 100.5, -1.0), 100.0, material_ground);
+    let sphere_center = Sphere::new(Vec3::new(0.0, 0.0, -1.0), 0.5, material_center);
+    let sphere_left = Sphere::new(Vec3::new(-1.0, 0.0, -1.0), 0.5, material_left);
+    let sphere_right = Sphere::new(Vec3::new(1.0, 0.0, -1.0), 0.5, material_right);
+
+    list.add(Arc::new(sphere_ground));
+    list.add(Arc::new(sphere_center));
+    list.add(Arc::new(sphere_left));
+    list.add(Arc::new(sphere_right));
+
+    let lookfrom = Vec3::new(-2.0, -2.0, 1.0);
+    let lookat = Vec3::new(0.0, 0.0, -1.0);
+    let view_up = Vec3::new(0.0, 1.0, 0.0);
+    let distance_to_focus = 10.0;
+    let aperture = 0.1;
+
+    let camera = Camera::new(lookfrom, lookat, view_up, 20.0, aspect_ratio, aperture, distance_to_focus);
+
+    let mut threads = vec![];
+    let pixels_out: Arc<Mutex<Vec<Vec<Pixel>>>> = Arc::new(Mutex::new(vec![]));
+    pixels_out.lock().unwrap().resize(NUMBER_OF_THREADS, vec![]);
+    for (i, chunk) in image.data.chunks_exact(image.data.len() / NUMBER_OF_THREADS).enumerate() {
+        let chunk = chunk.to_vec();
+        let image = image.clone();
+        let list = list.clone();
+        let camera = camera.clone();
+        let pixels_out= pixels_out.clone();
+        threads.push(thread::spawn(move || {
+            let out = run(chunk, i, image.width, image.height, &camera, &list);
+            pixels_out.lock().unwrap()[i] = out;
+            println!("Thread {} finished.", i);
+        }));
+    }
+
+    for thread in threads {
+        thread.join().unwrap();
+    }
+    image.data.clear();
+
+    let mut pixels_out = pixels_out.lock().unwrap();
+    for i in 0..NUMBER_OF_THREADS {
+        image.data.append(&mut pixels_out[i]);
+    }
+
+    image.write_to_file("test4.ppm");
 }

@@ -15,7 +15,7 @@ impl Ray {
         self.origin + t * self.direction
     }
 
-    pub fn color(&self, world: &dyn Hittable, depth: i32) -> Vec3 {
+    pub fn color(&self, world: &(dyn Hittable + Send + Sync), depth: i32) -> Vec3 {
         if depth <= 0 {
             return Vec3::new(0.0, 0.0, 0.0);
         }
