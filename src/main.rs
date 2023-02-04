@@ -14,6 +14,7 @@ mod materials;
 
 const NUMBER_OF_THREADS: usize = 7;
 
+#[allow(dead_code)]
 fn random_scene() -> HittableList
 {
     let mut list = HittableList::new();
@@ -60,12 +61,12 @@ fn random_scene() -> HittableList
 
 fn run(mut data: Vec<Pixel>, id: usize, width: u32, height: u32, camera: &Camera, list: &HittableList) -> Vec<Pixel>
 {
-    let samples_per_pixel = 100;
+    let samples_per_pixel = 500;
     let max_depth = 50;
     let scale = 1.0 / samples_per_pixel as f32;
-    let mut index = width as usize * height as usize / NUMBER_OF_THREADS * id;
+    let mut index = id * width as usize;
     let total_lines = (height as f32 / NUMBER_OF_THREADS as f32).round();
-    let mut current_line = 0.0;
+    let mut current_line = 0;
 
     for mut pixel in data.iter_mut() {
         let x = index as u32 % width;
@@ -92,10 +93,10 @@ fn run(mut data: Vec<Pixel>, id: usize, width: u32, height: u32, camera: &Camera
         pixel.b = (b * 256.0) as u8;
 
         index += 1;
-        if index as u32 / width != y {
-            current_line += 1.0;
-            let remaining_lines = total_lines - current_line;
-            println!("Thread {} is currently processing line {} of {}. {} lines remaining.", id, current_line, total_lines, remaining_lines);
+        if index % width as usize == 0 {
+            index += width as usize * (NUMBER_OF_THREADS - 1);
+            current_line += 1;
+            println!("Thread {id} is currently processing line {current_line} out of {total_lines}.");
         }
     }
     data
@@ -103,7 +104,7 @@ fn run(mut data: Vec<Pixel>, id: usize, width: u32, height: u32, camera: &Camera
 
 fn main() {
     let aspect_ratio = 16.0 / 9.0;
-    let width: f32 = 400.0;
+    let width: f32 = 1920.0;
 
     let mut image = Image::new(width as u32, (width / aspect_ratio) as u32, 255);
     // let list = random_scene();
@@ -140,11 +141,11 @@ fn main() {
         let image = image.clone();
         let list = list.clone();
         let camera = camera.clone();
-        let pixels_out= pixels_out.clone();
+        let pixels_out = pixels_out.clone();
         threads.push(thread::spawn(move || {
             let out = run(chunk, i, image.width, image.height, &camera, &list);
             pixels_out.lock().unwrap()[i] = out;
-            println!("Thread {} finished.", i);
+            println!("Thread {i} finished.");
         }));
     }
 
@@ -153,10 +154,18 @@ fn main() {
     }
     image.data.clear();
 
-    let mut pixels_out = pixels_out.lock().unwrap();
-    for i in 0..NUMBER_OF_THREADS {
-        image.data.append(&mut pixels_out[i]);
+    let pixels_out = pixels_out.lock().unwrap();
+    for i in 0..pixels_out[0].len() as u32 / image.width + 1 {
+        println!("Writing line {} of {}.", i, pixels_out[0].len() as u32 / image.width);
+        for j in 0..NUMBER_OF_THREADS {
+            let start = (i * image.width) as usize;
+            let mut end = start + image.width as usize;
+            if end > pixels_out[j].len() {
+                end = pixels_out[j].len();
+            }
+            let src = &pixels_out[j][start..end];
+            image.data.extend(src);
+        }
     }
-
-    image.write_to_file("test4.ppm");
+    image.write_to_file("test5.ppm");
 }
