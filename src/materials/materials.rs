@@ -78,7 +78,6 @@ impl Dielectric
 
 impl Material for Dielectric
 {
-    //TODO: fix this
     fn scatter(&self, ray: &Ray, hit_record: &HitRecord) -> Option<(Ray, Vec3)> {
         let refraction_ratio = if hit_record.front_face { 1.0 / self.refraction_index } else { self.refraction_index };
         let unit_direction = ray.direction.unit_vector();

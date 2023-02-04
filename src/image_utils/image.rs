@@ -37,7 +37,7 @@ impl Image {
             width,
             height,
             max_value,
-            data: vec![Pixel::new(255, 0, 0); (width * height) as usize],
+            data: Vec::with_capacity((width * height) as usize),
         }
     }
 
