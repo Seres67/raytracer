@@ -1,5 +1,7 @@
+use std::sync::Arc;
 use crate::image_utils::hittable::HitRecord;
 use crate::image_utils::ray::Ray;
+use crate::image_utils::texture::{SolidColor, Texture};
 use crate::utils::random_double;
 use crate::utils::vec3::Vec3;
 
@@ -10,13 +12,17 @@ pub trait Material
 
 pub struct Lambertian
 {
-    pub albedo: Vec3,
+    pub texture: Arc<dyn Texture + Send + Sync>,
 }
 
 impl Lambertian
 {
-    pub fn new(albedo: Vec3) -> Lambertian {
-        Lambertian { albedo }
+    pub fn new(color: Vec3) -> Lambertian {
+        Lambertian { texture: Arc::new(SolidColor::new(color)) }
+    }
+
+    pub fn from_texture(texture: Arc<dyn Texture + Send + Sync>) -> Lambertian {
+        Lambertian { texture }
     }
 }
 
@@ -27,8 +33,8 @@ impl Material for Lambertian
         if scatter_direction.near_zero() {
             scatter_direction = hit_record.normal;
         }
-        let scattered = Ray::new(hit_record.position, scatter_direction);
-        Some((scattered, self.albedo))
+        let scattered = Ray::new(hit_record.position, scatter_direction, _ray.time);
+        Some((scattered, self.texture.value(hit_record.u, hit_record.v, hit_record.position)))
     }
 }
 
@@ -49,7 +55,7 @@ impl Material for Metal
 {
     fn scatter(&self, ray: &Ray, hit_record: &HitRecord) -> Option<(Ray, Vec3)> {
         let reflected = ray.direction.unit_vector().reflect(hit_record.normal);
-        let scattered = Ray::new(hit_record.position, reflected + self.fuzz * Vec3::random_in_unit_sphere());
+        let scattered = Ray::new(hit_record.position, reflected + self.fuzz * Vec3::random_in_unit_sphere(), ray.time);
         if scattered.direction.dot(hit_record.normal) > 0.0 {
             Some((scattered, self.albedo))
         } else {
@@ -89,7 +95,7 @@ impl Material for Dielectric
         } else {
             unit_direction.refract(hit_record.normal, refraction_ratio)
         };
-        let ray = Ray::new(hit_record.position, direction);
+        let ray = Ray::new(hit_record.position, direction, ray.time);
         Some((ray, Vec3::new(1.0, 1.0, 1.0)))
     }
 }

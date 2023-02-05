@@ -1,5 +1,5 @@
 use std::fmt::{Display, Formatter};
-use std::ops::{Add, Div, Mul, Neg, Sub};
+use std::ops::{Add, Div, Index, Mul, Neg, Sub};
 use crate::utils::random_double_range;
 
 #[derive(Debug, Copy, Clone)]
@@ -149,6 +149,21 @@ impl Neg for Vec3 {
 
     fn neg(self) -> Self::Output {
         Vec3::new(-self.x, -self.y, -self.z)
+    }
+}
+
+impl Index<usize> for Vec3
+{
+    type Output = f32;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        if index == 0 {
+            &self.x
+        } else if index == 1 {
+            &self.y
+        } else {
+            &self.z
+        }
     }
 }
 
