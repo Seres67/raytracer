@@ -9,25 +9,39 @@ pub struct Ray {
 
 impl Ray {
     pub fn new(origin: Vec3, direction: Vec3, time: f32) -> Ray {
-        Ray { origin, direction, time }
+        Ray {
+            origin,
+            direction,
+            time,
+        }
     }
 
     pub fn at(&self, t: f32) -> Vec3 {
         self.origin + t * self.direction
     }
 
-    pub fn color(&self, world: &(dyn Hittable + Send + Sync), depth: i32) -> Vec3 {
+    pub fn color(
+        &self,
+        background: Vec3,
+        world: &(dyn Hittable + Send + Sync),
+        depth: i32,
+    ) -> Vec3 {
         if depth <= 0 {
             return Vec3::new(0.0, 0.0, 0.0);
         }
-        if let Some(record) = world.hit(self, 0.001, f32::INFINITY) {
-            if let Some((scattered, attenuation)) = record.material.scatter(self, &record) {
-                return attenuation * scattered.color(world, depth - 1);
+        let record = world.hit(self, 0.001, f32::INFINITY);
+        if let Some(..) = record {
+            let record = record.unwrap();
+            let emitted = record.material.emitted(record.u, record.v, record.position);
+            let option = record.material.scatter(self, &record);
+            if let Some(..) = option {
+                let (scattered, attenuation) = option.unwrap();
+                emitted + attenuation * scattered.color(background, world, depth - 1)
+            } else {
+                emitted
             }
-            return Vec3::new(0.0, 0.0, 0.0);
+        } else {
+            background
         }
-        let unit_direction = self.direction.unit_vector();
-        let t = 0.5 * (unit_direction.y + 1.0);
-        (1.0 - t) * Vec3::new(1.0, 1.0, 1.0) + t * Vec3::new(0.5, 0.7, 1.0)
     }
 }

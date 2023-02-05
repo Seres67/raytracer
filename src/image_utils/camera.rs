@@ -1,9 +1,8 @@
 use crate::image_utils::ray::Ray;
-use crate::utils::{random_double_range};
+use crate::utils::random_double_range;
 use crate::utils::vec3::Vec3;
 
-pub struct Camera
-{
+pub struct Camera {
     pub origin: Vec3,
     pub lower_left_corner: Vec3,
     pub horizontal: Vec3,
@@ -16,9 +15,18 @@ pub struct Camera
     pub time_2: f32,
 }
 
-impl Camera
-{
-    pub fn new(look_from: Vec3, look_at: Vec3, view_up: Vec3, vertical_fov: f32, aspect_ratio: f32, aperture: f32, focus_distance: f32, time_1: f32, time_2: f32) -> Camera {
+impl Camera {
+    pub fn new(
+        look_from: Vec3,
+        look_at: Vec3,
+        view_up: Vec3,
+        vertical_fov: f32,
+        aspect_ratio: f32,
+        aperture: f32,
+        focus_distance: f32,
+        time_1: f32,
+        time_2: f32,
+    ) -> Camera {
         let theta = vertical_fov.to_radians();
         let h = (theta / 2.0).tan();
         let viewport_height = 2.0 * h;
@@ -30,17 +38,42 @@ impl Camera
         let horizontal = viewport_width * u * focus_distance;
         let vertical = viewport_height * v * focus_distance;
         let lower_left_corner = origin - horizontal / 2.0 - vertical / 2.0 - w * focus_distance;
-        Camera { origin, lower_left_corner, horizontal, vertical, u, v, w, lens_radius: aperture / 2.0, time_1, time_2 }
+        Camera {
+            origin,
+            lower_left_corner,
+            horizontal,
+            vertical,
+            u,
+            v,
+            w,
+            lens_radius: aperture / 2.0,
+            time_1,
+            time_2,
+        }
     }
 
     pub fn get_ray(&self, u: f32, v: f32) -> Ray {
-        Ray::new(self.origin, self.lower_left_corner + u * self.horizontal + v * self.vertical - self.origin, random_double_range(self.time_1, self.time_2))
+        Ray::new(
+            self.origin,
+            self.lower_left_corner + u * self.horizontal + v * self.vertical - self.origin,
+            random_double_range(self.time_1, self.time_2),
+        )
     }
 }
 
-impl Clone for Camera
-{
+impl Clone for Camera {
     fn clone(&self) -> Camera {
-        Camera { origin: self.origin, lower_left_corner: self.lower_left_corner, horizontal: self.horizontal, vertical: self.vertical, u: self.u, v: self.v, w: self.w, lens_radius: self.lens_radius, time_1: self.time_1, time_2: self.time_2 }
+        Camera {
+            origin: self.origin,
+            lower_left_corner: self.lower_left_corner,
+            horizontal: self.horizontal,
+            vertical: self.vertical,
+            u: self.u,
+            v: self.v,
+            w: self.w,
+            lens_radius: self.lens_radius,
+            time_1: self.time_1,
+            time_2: self.time_2,
+        }
     }
 }

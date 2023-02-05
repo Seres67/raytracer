@@ -1,32 +1,36 @@
-use std::sync::Arc;
 use crate::image_utils::aabb::AABB;
 use crate::image_utils::hittable::{HitRecord, Hittable};
 use crate::image_utils::ray::Ray;
 use crate::materials::materials::Material;
 use crate::utils::vec3::Vec3;
+use std::sync::Arc;
 
-pub struct Sphere
-{
+pub struct Sphere {
     pub center: Vec3,
     pub radius: f32,
     pub material: Arc<dyn Material + Send + Sync>,
 }
 
-impl Sphere
-{
+impl Sphere {
     pub fn new(center: Vec3, radius: f32, material: Arc<dyn Material + Send + Sync>) -> Sphere {
-        Sphere { center, radius, material }
+        Sphere {
+            center,
+            radius,
+            material,
+        }
     }
 
     fn get_sphere_uv(&self, point: Vec3) -> (f32, f32) {
         let phi = point.z.atan2(point.x);
         let theta = point.y.asin();
-        (1.0 - (phi + std::f32::consts::PI) / (2.0 * std::f32::consts::PI), (theta + std::f32::consts::PI / 2.0) / std::f32::consts::PI)
+        (
+            1.0 - (phi + std::f32::consts::PI) / (2.0 * std::f32::consts::PI),
+            (theta + std::f32::consts::PI / 2.0) / std::f32::consts::PI,
+        )
     }
 }
 
-impl Hittable for Sphere
-{
+impl Hittable for Sphere {
     fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
         let oc = ray.origin - self.center;
         let a = ray.direction.length_squared();
@@ -55,7 +59,10 @@ impl Hittable for Sphere
     }
 
     fn bounding_box(&self, _time0: f32, _time1: f32) -> Option<AABB> {
-        Some(AABB::new(self.center - Vec3::new(self.radius, self.radius, self.radius), self.center + Vec3::new(self.radius, self.radius, self.radius)))
+        Some(AABB::new(
+            self.center - Vec3::new(self.radius, self.radius, self.radius),
+            self.center + Vec3::new(self.radius, self.radius, self.radius),
+        ))
     }
 
     fn clone_dyn(&self) -> Arc<dyn Hittable + Send + Sync> {
@@ -63,8 +70,7 @@ impl Hittable for Sphere
     }
 }
 
-pub struct MovingSphere
-{
+pub struct MovingSphere {
     center0: Vec3,
     center1: Vec3,
     time0: f32,
@@ -73,19 +79,32 @@ pub struct MovingSphere
     material: Arc<dyn Material + Send + Sync>,
 }
 
-impl MovingSphere
-{
-    pub fn new(center0: Vec3, center1: Vec3, time0: f32, time1: f32, radius: f32, material: Arc<dyn Material + Send + Sync>) -> MovingSphere {
-        MovingSphere { center0, center1, time0, time1, radius, material }
+impl MovingSphere {
+    pub fn new(
+        center0: Vec3,
+        center1: Vec3,
+        time0: f32,
+        time1: f32,
+        radius: f32,
+        material: Arc<dyn Material + Send + Sync>,
+    ) -> MovingSphere {
+        MovingSphere {
+            center0,
+            center1,
+            time0,
+            time1,
+            radius,
+            material,
+        }
     }
 
     fn center(&self, time: f32) -> Vec3 {
-        self.center0 + ((time - self.time0) / (self.time1 - self.time0)) * (self.center1 - self.center0)
+        self.center0
+            + ((time - self.time0) / (self.time1 - self.time0)) * (self.center1 - self.center0)
     }
 }
 
-impl Hittable for MovingSphere
-{
+impl Hittable for MovingSphere {
     fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
         let oc = ray.origin - self.center(ray.time);
         let a = ray.direction.length_squared();
@@ -111,12 +130,25 @@ impl Hittable for MovingSphere
     }
 
     fn bounding_box(&self, time0: f32, time1: f32) -> Option<AABB> {
-        let box0 = AABB::new(self.center(time0) - Vec3::new(self.radius, self.radius, self.radius), self.center(time0) + Vec3::new(self.radius, self.radius, self.radius));
-        let box1 = AABB::new(self.center(time1) - Vec3::new(self.radius, self.radius, self.radius), self.center(time1) + Vec3::new(self.radius, self.radius, self.radius));
+        let box0 = AABB::new(
+            self.center(time0) - Vec3::new(self.radius, self.radius, self.radius),
+            self.center(time0) + Vec3::new(self.radius, self.radius, self.radius),
+        );
+        let box1 = AABB::new(
+            self.center(time1) - Vec3::new(self.radius, self.radius, self.radius),
+            self.center(time1) + Vec3::new(self.radius, self.radius, self.radius),
+        );
         Some(box0.surrounding_box(box1))
     }
 
     fn clone_dyn(&self) -> Arc<dyn Hittable + Send + Sync> {
-        Arc::new(MovingSphere::new(self.center0, self.center1, self.time0, self.time1, self.radius, self.material.clone()))
+        Arc::new(MovingSphere::new(
+            self.center0,
+            self.center1,
+            self.time0,
+            self.time1,
+            self.radius,
+            self.material.clone(),
+        ))
     }
 }

@@ -1,6 +1,6 @@
-use std::fmt::{Display, Formatter};
-use std::ops::{Add, Div, Index, Mul, Neg, Sub};
 use crate::utils::random_double_range;
+use std::fmt::{Display, Formatter};
+use std::ops::{Add, Div, Index, IndexMut, Mul, Neg, Sub};
 
 #[derive(Debug, Copy, Clone)]
 pub struct Vec3 {
@@ -43,7 +43,11 @@ impl Vec3 {
     }
 
     pub fn random_range(min: f32, max: f32) -> Vec3 {
-        Vec3::new(random_double_range(min, max), random_double_range(min, max), random_double_range(min, max))
+        Vec3::new(
+            random_double_range(min, max),
+            random_double_range(min, max),
+            random_double_range(min, max),
+        )
     }
 
     pub fn random_in_unit_sphere() -> Vec3 {
@@ -76,10 +80,13 @@ impl Vec3 {
         r_out_perp + r_out_parallel
     }
 
-    pub fn random_in_unit_disk() -> Vec3
-    {
+    pub fn random_in_unit_disk() -> Vec3 {
         loop {
-            let p = Vec3::new(random_double_range(-1.0, 1.0), random_double_range(-1.0, 1.0), 0.0);
+            let p = Vec3::new(
+                random_double_range(-1.0, 1.0),
+                random_double_range(-1.0, 1.0),
+                0.0,
+            );
             if p.length_squared() >= 1.0 {
                 continue;
             }
@@ -152,8 +159,7 @@ impl Neg for Vec3 {
     }
 }
 
-impl Index<usize> for Vec3
-{
+impl Index<usize> for Vec3 {
     type Output = f32;
 
     fn index(&self, index: usize) -> &Self::Output {
@@ -163,6 +169,18 @@ impl Index<usize> for Vec3
             &self.y
         } else {
             &self.z
+        }
+    }
+}
+
+impl IndexMut<usize> for Vec3 {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        if index == 0 {
+            &mut self.x
+        } else if index == 1 {
+            &mut self.y
+        } else {
+            &mut self.z
         }
     }
 }

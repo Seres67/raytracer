@@ -1,11 +1,10 @@
-use std::sync::Arc;
 use crate::image_utils::aabb::AABB;
 use crate::image_utils::ray::Ray;
 use crate::materials::materials::Material;
 use crate::utils::vec3::Vec3;
+use std::sync::Arc;
 
-pub trait Hittable
-{
+pub trait Hittable {
     fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord>;
     fn bounding_box(&self, time0: f32, time1: f32) -> Option<AABB>;
     fn clone_dyn(&self) -> Arc<dyn Hittable + Send + Sync>;
@@ -29,8 +28,7 @@ pub trait Hittable
     }
 }
 
-pub struct HitRecord
-{
+pub struct HitRecord {
     pub position: Vec3,
     pub normal: Vec3,
     pub material: Arc<dyn Material>,
@@ -40,27 +38,38 @@ pub struct HitRecord
     pub front_face: bool,
 }
 
-impl HitRecord
-{
+impl HitRecord {
     pub fn new(position: Vec3, material: Arc<dyn Material>, t: f32) -> HitRecord {
-        HitRecord { position, normal: Vec3::new(0.0, 0.0, 0.0), material, t, u: 0.0, v: 0.0, front_face: false }
+        HitRecord {
+            position,
+            normal: Vec3::new(0.0, 0.0, 0.0),
+            material,
+            t,
+            u: 0.0,
+            v: 0.0,
+            front_face: false,
+        }
     }
 
     pub fn set_face_normal(&mut self, ray: &Ray, outward_normal: Vec3) {
         self.front_face = ray.direction.dot(outward_normal) < 0.0;
-        self.normal = if self.front_face { outward_normal } else { -outward_normal };
+        self.normal = if self.front_face {
+            outward_normal
+        } else {
+            -outward_normal
+        };
     }
 }
 
-pub struct HittableList
-{
+pub struct HittableList {
     pub objects: Vec<Arc<dyn Hittable + Send + Sync>>,
 }
 
-impl HittableList
-{
+impl HittableList {
     pub fn new() -> HittableList {
-        HittableList { objects: Vec::new() }
+        HittableList {
+            objects: Vec::new(),
+        }
     }
 
     pub fn add(&mut self, object: Arc<dyn Hittable + Send + Sync>) {
@@ -72,8 +81,7 @@ impl HittableList
     }
 }
 
-impl Hittable for HittableList
-{
+impl Hittable for HittableList {
     fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
         let mut hit_anything = None;
         let mut closest_so_far = t_max;
@@ -109,8 +117,7 @@ impl Hittable for HittableList
     }
 }
 
-impl Clone for HittableList
-{
+impl Clone for HittableList {
     fn clone(&self) -> Self {
         let mut objects = Vec::new();
         for object in &self.objects {

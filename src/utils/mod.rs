@@ -1,3 +1,4 @@
+pub mod perlin;
 pub mod vec3;
 
 pub fn random_double() -> f32 {

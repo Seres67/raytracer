@@ -3,8 +3,7 @@ use std::fs::File;
 use std::io::Write;
 
 #[derive(Debug, Clone, Copy)]
-pub struct Pixel
-{
+pub struct Pixel {
     pub r: u8,
     pub g: u8,
     pub b: u8,
@@ -23,8 +22,7 @@ impl Display for Pixel {
 }
 
 #[derive(Debug, Clone)]
-pub struct Image
-{
+pub struct Image {
     pub width: u32,
     pub height: u32,
     pub max_value: u8,
@@ -41,8 +39,7 @@ impl Image {
         }
     }
 
-    pub fn write_to_file(&self, path: &str)
-    {
+    pub fn write_to_file(&self, path: &str) {
         let file = File::create(path);
         let mut file = match file {
             Ok(file) => file,
@@ -51,7 +48,12 @@ impl Image {
                 return;
             }
         };
-        let mut output = format!("P3\n{} {}\n{}\n", self.width, self.height, self.max_value);
+        let mut output = format!(
+            "P3\n{} {}\n{}\n",
+            self.width,
+            self.data.len() as u32 / self.width,
+            self.max_value
+        );
 
         let mut index = 0;
         for pixel in &self.data {
@@ -62,13 +64,18 @@ impl Image {
                 output.push('\n');
             }
         }
-        file.write_all(output.as_bytes()).expect("Couldn't write to file");
+        file.write_all(output.as_bytes())
+            .expect("Couldn't write to file");
     }
 }
 
 impl Display for Image {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "P3\n{} {}\n{}\n", self.width, self.height, self.max_value)?;
+        write!(
+            f,
+            "P3\n{} {}\n{}\n",
+            self.width, self.height, self.max_value
+        )?;
         for (mut index, pixel) in self.data.iter().enumerate() {
             write!(f, "{pixel} ")?;
             index += 1;
