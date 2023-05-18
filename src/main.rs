@@ -311,7 +311,7 @@ fn simple_light() -> HittableList {
 }
 
 fn run(id: usize, width: u32, height: u32, camera: &Camera, list: &HittableList) -> Vec<Pixel> {
-    let samples_per_pixel = 100;
+    let samples_per_pixel = 10000;
     let max_depth = 50;
     let scale = 1.0 / samples_per_pixel as f32;
     let mut index = id * width as usize;
@@ -319,7 +319,8 @@ fn run(id: usize, width: u32, height: u32, camera: &Camera, list: &HittableList)
     let max_index = width * total_lines as u32;
     let mut current_line = 0;
     let mut out = Vec::new();
-    let background = Vec3::new(0.2, 0.3, 0.5);
+    // let background = Vec3::new(0.0, 0.0, 0.0);
+    let background = Vec3::new(0.7, 0.8, 1.0);
     //out.resize((total_lines * width as f32) as usize, Pixel::new(0, 0, 0));
     println!(
         "Thread {id} is currently processing line {} out of {}.",
@@ -358,13 +359,13 @@ fn run(id: usize, width: u32, height: u32, camera: &Camera, list: &HittableList)
 
 fn main() {
     let aspect_ratio = 1.0;
-    let width: f32 = 400.0;
+    let width: f32 = 800.0;
 
     let mut image = Image::new(width as u32, (width / aspect_ratio) as u32, 255);
-    let list = Arc::new(basic_scene());
+    let list = Arc::new(final_scene());
 
-    let lookfrom = Vec3::new(3.0, 0.5, 1.0);
-    let lookat = Vec3::new(0.0, 0.0, -1.0);
+    let lookfrom = Vec3::new(478.0, 278.0, -600.0);
+    let lookat = Vec3::new(278.0, 278.0, -1.0);
     let view_up = Vec3::new(0.0, 1.0, 0.0);
     let distance_to_focus = 4.2;
     let aperture = 0.1;
@@ -373,7 +374,7 @@ fn main() {
         lookfrom,
         lookat,
         view_up,
-        30.0,
+        40.0,
         aspect_ratio,
         aperture,
         distance_to_focus,
